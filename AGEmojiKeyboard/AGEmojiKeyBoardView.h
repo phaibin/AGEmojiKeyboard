@@ -9,6 +9,7 @@
 // interface to the user to enter emoji characters.
 
 #import <UIKit/UIKit.h>
+#import "HMSegmentedControl.h"
 
 typedef NS_ENUM(NSInteger, AGEmojiKeyboardViewCategoryImage) {
   AGEmojiKeyboardViewCategoryImageRecent,
@@ -34,7 +35,12 @@ typedef NS_ENUM(NSInteger, AGEmojiKeyboardViewCategoryImage) {
 /**
  Segment control displays the categories.
  */
-@property (nonatomic, readonly) UISegmentedControl *segmentsBar;
+@property (nonatomic, readonly) HMSegmentedControl *segmentsBar;
+
+/**
+ Send button..
+ */
+@property (nonatomic, readonly) UIButton *sendButton;
 
 /**
  Pagecontrol displays the current page and number of pages on an emoji page.

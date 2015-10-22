@@ -8,6 +8,9 @@
 
 #import <UIKit/UIKit.h>
 
+static const CGFloat TopMargin = 10;
+static const CGFloat LeftMargin = 11;
+
 @protocol AGEmojiPageViewDelegate;
 
 @interface AGEmojiPageView : UIView

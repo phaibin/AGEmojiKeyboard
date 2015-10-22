@@ -9,18 +9,46 @@
 #import "AGEmojiKeyBoardView.h"
 #import "AGEmojiPageView.h"
 
-static const CGFloat ButtonWidth = 45;
-static const CGFloat ButtonHeight = 37;
+#define RGBCOLOR(R,G,B) [UIColor colorWithRed:R/255.0 green:G/255.0 blue:B/255.0 alpha:1]
+#define RGBACOLOR(R,G,B,A) [UIColor colorWithRed:R/255.0 green:G/255.0 blue:B/255.0 alpha:A]
+
+static const CGFloat ButtonWidth = 40;
+static const CGFloat ButtonHeight = 30;
 
 static const NSUInteger DefaultRecentEmojisMaintainedCount = 50;
 
 static NSString *const segmentRecentName = @"Recent";
 NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
 
+@interface UIImage (Categories)
+
++ (UIImage *)imageWithColor:(UIColor *)color;
+
+@end
+
+@implementation UIImage (Categories)
+
++ (UIImage *)imageWithColor:(UIColor *)color {
+    CGRect rect = CGRectMake(0.0f, 0.0f, 1.0f, 1.0f);
+    UIGraphicsBeginImageContext(rect.size);
+    CGContextRef context = UIGraphicsGetCurrentContext();
+    
+    CGContextSetFillColorWithColor(context, [color CGColor]);
+    CGContextFillRect(context, rect);
+    
+    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    
+    return image;
+}
+
+@end
+
 
 @interface AGEmojiKeyboardView () <UIScrollViewDelegate, AGEmojiPageViewDelegate>
 
-@property (nonatomic) UISegmentedControl *segmentsBar;
+@property (nonatomic) HMSegmentedControl *segmentsBar;
+@property (nonatomic) UIButton *sendButton;
 @property (nonatomic) UIPageControl *pageControl;
 @property (nonatomic) UIScrollView *emojiPagesScrollView;
 @property (nonatomic) NSDictionary *emojis;
@@ -112,39 +140,55 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
   self = [super initWithFrame:frame];
   if (self) {
     // initialize category
+      
+    self.backgroundColor = RGBCOLOR(246, 246, 246);
 
     _dataSource = dataSource;
 
     self.category = [self categoryNameAtIndex:self.defaultSelectedCategory];
-
-    self.segmentsBar = [[UISegmentedControl alloc] initWithItems:self.imagesForSelectedSegments];
-    self.segmentsBar.frame = CGRectMake(0,
-                                        0,
-                                        CGRectGetWidth(self.bounds),
-                                        CGRectGetHeight(self.segmentsBar.bounds));
-    self.segmentsBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-
-    [self.segmentsBar addTarget:self
-                         action:@selector(categoryChangedViaSegmentsBar:)
-               forControlEvents:UIControlEventValueChanged];
-    [self setSelectedCategoryImageInSegmentControl:self.segmentsBar
-                                           atIndex:self.defaultSelectedCategory];
-    self.segmentsBar.selectedSegmentIndex = self.defaultSelectedCategory;
+      
+    CGFloat segmentHeight = 42;
+    CGFloat sendButtonWidth = 50;
+      
+    self.segmentsBar = [[HMSegmentedControl alloc] initWithSectionImages:self.imagesForNonSelectedSegments sectionSelectedImages:self.imagesForSelectedSegments];
+    self.segmentsBar.frame = CGRectMake(-1, CGRectGetHeight(self.bounds)-segmentHeight, CGRectGetWidth(self.bounds)-sendButtonWidth, segmentHeight);
+    self.segmentsBar.selectionIndicatorHeight = 4.0f;
+    self.segmentsBar.backgroundColor = [UIColor clearColor];
+    self.segmentsBar.selectionIndicatorLocation = HMSegmentedControlSelectionIndicatorLocationNone;
+    self.segmentsBar.selectionStyle = HMSegmentedControlSelectionStyleTextWidthStripe;
+    self.segmentsBar.verticalDividerEnabled = YES;
+    self.segmentsBar.verticalDividerColor = RGBCOLOR(216, 216, 216);
+    self.segmentsBar.verticalDividerWidth = 1.0f;
+    self.segmentsBar.layer.borderWidth = 1.0;
+    self.segmentsBar.layer.borderColor = RGBCOLOR(216, 216, 216).CGColor;
+    [self.segmentsBar addTarget:self action:@selector(segmentedControlChangedValue:) forControlEvents:UIControlEventValueChanged];
     [self addSubview:self.segmentsBar];
+      
+    self.sendButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    self.sendButton.frame = CGRectMake(CGRectGetWidth(self.bounds)-sendButtonWidth-2, CGRectGetHeight(self.bounds)-segmentHeight, sendButtonWidth+2, segmentHeight);
+    [self.sendButton setBackgroundImage:[UIImage imageWithColor:RGBCOLOR(88,218,143)] forState:UIControlStateNormal];
+    [self.sendButton setBackgroundImage:[UIImage imageWithColor:[RGBCOLOR(88,218,143) colorWithAlphaComponent:0.5]] forState:UIControlStateDisabled];
+    [self.sendButton setTitle:@"发送" forState:UIControlStateNormal];
+    self.sendButton.titleLabel.font = [UIFont systemFontOfSize:15];
+      self.sendButton.enabled = NO;
+    [self addSubview:self.sendButton];
 
     self.pageControl = [[UIPageControl alloc] init];
     self.pageControl.hidesForSinglePage = YES;
     self.pageControl.currentPage = 0;
     self.pageControl.backgroundColor = [UIColor clearColor];
+    self.pageControl.pageIndicatorTintColor = RGBCOLOR(216, 216, 216);
+    self.pageControl.currentPageIndicatorTintColor = [UIColor grayColor];
     CGSize pageControlSize = [self.pageControl sizeForNumberOfPages:3];
-    CGSize frameSize = CGSizeMake(CGRectGetWidth(self.bounds),
-                                  CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height);
+    CGSize frameSize = CGSizeMake(CGRectGetWidth(self.bounds) - 2*LeftMargin,
+                                  CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height/2 - 2*TopMargin);
     NSUInteger numberOfPages = [self numberOfPagesForCategory:self.category
                                                   inFrameSize:frameSize];
     self.pageControl.numberOfPages = numberOfPages;
     pageControlSize = [self.pageControl sizeForNumberOfPages:numberOfPages];
+      pageControlSize.height = 20;
     CGRect pageControlFrame = CGRectMake((CGRectGetWidth(self.bounds) - pageControlSize.width) / 2,
-                                         CGRectGetHeight(self.bounds) - pageControlSize.height,
+                                         CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height,
                                          pageControlSize.width,
                                          pageControlSize.height);
     self.pageControl.frame = CGRectIntegral(pageControlFrame);
@@ -156,7 +200,7 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
     CGRect scrollViewFrame = CGRectMake(0,
                                         CGRectGetHeight(self.segmentsBar.bounds),
                                         CGRectGetWidth(self.bounds),
-                                        CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height);
+                                        CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height/2);
     self.emojiPagesScrollView = [[UIScrollView alloc] initWithFrame:scrollViewFrame];
     self.emojiPagesScrollView.pagingEnabled = YES;
     self.emojiPagesScrollView.showsHorizontalScrollIndicator = NO;
@@ -170,24 +214,26 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
 
 - (void)layoutSubviews {
   CGSize pageControlSize = [self.pageControl sizeForNumberOfPages:3];
+    pageControlSize.height = 20;
   NSUInteger numberOfPages = [self numberOfPagesForCategory:self.category
-                                                inFrameSize:CGSizeMake(CGRectGetWidth(self.bounds), CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height)];
+                                                inFrameSize:CGSizeMake(CGRectGetWidth(self.bounds) - 2*LeftMargin, CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height/2 - 2*TopMargin)];
 
   NSInteger currentPage = (self.pageControl.currentPage > numberOfPages) ? numberOfPages : self.pageControl.currentPage;
 
   // if (currentPage > numberOfPages) it is set implicitly to max pageNumber available
   self.pageControl.numberOfPages = numberOfPages;
   pageControlSize = [self.pageControl sizeForNumberOfPages:numberOfPages];
+    pageControlSize.height = 20;
   CGRect pageControlFrame = CGRectMake((CGRectGetWidth(self.bounds) - pageControlSize.width) / 2,
-                                       CGRectGetHeight(self.bounds) - pageControlSize.height,
+                                       CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height,
                                        pageControlSize.width,
                                        pageControlSize.height);
   self.pageControl.frame = CGRectIntegral(pageControlFrame);
 
   self.emojiPagesScrollView.frame = CGRectMake(0,
-                                               CGRectGetHeight(self.segmentsBar.bounds),
+                                               0,
                                                CGRectGetWidth(self.bounds),
-                                               CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height);
+                                               CGRectGetHeight(self.bounds) - CGRectGetHeight(self.segmentsBar.bounds) - pageControlSize.height/2);
   [self.emojiPagesScrollView.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
   self.emojiPagesScrollView.contentOffset = CGPointMake(CGRectGetWidth(self.emojiPagesScrollView.bounds) * currentPage, 0);
   self.emojiPagesScrollView.contentSize = CGSizeMake(CGRectGetWidth(self.emojiPagesScrollView.bounds) * numberOfPages,
@@ -199,21 +245,10 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
 
 #pragma mark event handlers
 
-- (void)setSelectedCategoryImageInSegmentControl:(UISegmentedControl *)segmentsBar
-                                         atIndex:(NSInteger)index {
-  for (int i=0; i < self.segmentsBar.numberOfSegments; ++i) {
-    [segmentsBar setImage:self.imagesForNonSelectedSegments[i] forSegmentAtIndex:i];
-  }
-  [segmentsBar setImage:self.imagesForSelectedSegments[index] forSegmentAtIndex:index];
-}
-
-- (void)categoryChangedViaSegmentsBar:(UISegmentedControl *)sender {
-  // recalculate number of pages for new category and recreate emoji pages
-  self.category = [self categoryNameAtIndex:sender.selectedSegmentIndex];
-  [self setSelectedCategoryImageInSegmentControl:sender
-                                         atIndex:sender.selectedSegmentIndex];
-  self.pageControl.currentPage = 0;
-  [self setNeedsLayout];
+- (void)segmentedControlChangedValue:(HMSegmentedControl *)segmentedControl {
+    self.category = [self categoryNameAtIndex:segmentedControl.selectedSegmentIndex];
+    self.pageControl.currentPage = 0;
+    [self setNeedsLayout];
 }
 
 - (void)pageControlTouched:(UIPageControl *)sender {
@@ -253,12 +288,14 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
 
 // Create a pageView and add it to the scroll view.
 - (AGEmojiPageView *)synthesizeEmojiPageView {
-  NSUInteger rows = [self numberOfRowsForFrameSize:self.emojiPagesScrollView.bounds.size];
-  NSUInteger columns = [self numberOfColumnsForFrameSize:self.emojiPagesScrollView.bounds.size];
-  CGRect pageViewFrame = CGRectMake(0,
-                                    0,
-                                    CGRectGetWidth(self.emojiPagesScrollView.bounds),
-                                    CGRectGetHeight(self.emojiPagesScrollView.bounds));
+  NSUInteger rows = [self numberOfRowsForHeight:self.emojiPagesScrollView.bounds.size.height-10-2*TopMargin];
+  NSUInteger columns = [self numberOfColumnsForWidth:self.emojiPagesScrollView.bounds.size.width-2*LeftMargin];
+    CGFloat topMargin = 0;
+    CGFloat leftMargin = 0;
+  CGRect pageViewFrame = CGRectMake(leftMargin,
+                                    topMargin,
+                                    CGRectGetWidth(self.emojiPagesScrollView.bounds)-2*leftMargin,
+                                    CGRectGetHeight(self.emojiPagesScrollView.bounds)-2*topMargin);
   AGEmojiPageView *pageView = [[AGEmojiPageView alloc] initWithFrame: pageViewFrame
                                                 backSpaceButtonImage:[self.dataSource backSpaceButtonImageForEmojiKeyboardView:self]
                                                           buttonSize:CGSizeMake(ButtonWidth, ButtonHeight)
@@ -299,8 +336,8 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
 
   AGEmojiPageView *pageView = [self usableEmojiPageView];
 
-  NSUInteger rows = [self numberOfRowsForFrameSize:scrollView.bounds.size];
-  NSUInteger columns = [self numberOfColumnsForFrameSize:scrollView.bounds.size];
+  NSUInteger rows = [self numberOfRowsForHeight:scrollView.bounds.size.height-10-2*TopMargin];
+  NSUInteger columns = [self numberOfColumnsForWidth:scrollView.bounds.size.width-2*LeftMargin];
   NSUInteger startingIndex = index * (rows * columns - 1);
   NSUInteger endingIndex = (index + 1) * (rows * columns - 1);
   NSMutableArray *buttonTexts = [self emojiTextsForCategory:self.category
@@ -330,12 +367,12 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
 
 #pragma mark data methods
 
-- (NSUInteger)numberOfColumnsForFrameSize:(CGSize)frameSize {
-  return (NSUInteger)floor(frameSize.width / ButtonWidth);
+- (NSUInteger)numberOfColumnsForWidth:(CGFloat)width {
+  return (NSUInteger)floor(width / ButtonWidth);
 }
 
-- (NSUInteger)numberOfRowsForFrameSize:(CGSize)frameSize {
-  return (NSUInteger)floor(frameSize.height / ButtonHeight);
+- (NSUInteger)numberOfRowsForHeight:(CGFloat)height {
+  return (NSUInteger)floor(height / ButtonHeight);
 }
 
 - (NSArray *)emojiListForCategory:(NSString *)category {
@@ -354,8 +391,8 @@ NSString *const RecentUsedEmojiCharactersKey = @"RecentUsedEmojiCharactersKey";
   }
 
   NSUInteger emojiCount = [[self emojiListForCategory:category] count];
-  NSUInteger numberOfRows = [self numberOfRowsForFrameSize:frameSize];
-  NSUInteger numberOfColumns = [self numberOfColumnsForFrameSize:frameSize];
+  NSUInteger numberOfRows = [self numberOfRowsForHeight:frameSize.height];
+  NSUInteger numberOfColumns = [self numberOfColumnsForWidth:frameSize.width];
   NSUInteger numberOfEmojisOnAPage = (numberOfRows * numberOfColumns) - 1;
 
   NSUInteger numberOfPages = (NSUInteger)ceil((float)emojiCount / numberOfEmojisOnAPage);

@@ -9,7 +9,7 @@
 #import "AGEmojiPageView.h"
 
 #define BACKSPACE_BUTTON_TAG 10
-#define BUTTON_FONT_SIZE 32
+#define BUTTON_FONT_SIZE 25
 
 @interface AGEmojiPageView ()
 
@@ -65,13 +65,13 @@
 //                + pos * buttonSize
 
 - (CGFloat)XMarginForButtonInColumn:(NSInteger)column {
-  CGFloat padding = ((CGRectGetWidth(self.bounds) - self.columns * self.buttonSize.width) / self.columns);
-  return (padding / 2 + column * (padding + self.buttonSize.width));
+  CGFloat padding = ((CGRectGetWidth(self.bounds) - 2*LeftMargin - self.columns * self.buttonSize.width) / self.columns);
+  return (padding / 2 + column * (padding + self.buttonSize.width)) + LeftMargin;
 }
 
 - (CGFloat)YMarginForButtonInRow:(NSInteger)rowNumber {
-  CGFloat padding = ((CGRectGetHeight(self.bounds) - self.rows * self.buttonSize.height) / self.rows);
-  return (padding / 2 + rowNumber * (padding + self.buttonSize.height));
+  CGFloat padding = ((CGRectGetHeight(self.bounds) - 2*TopMargin - self.rows * self.buttonSize.height) / self.rows);
+  return (padding / 2 + rowNumber * (padding + self.buttonSize.height)) + TopMargin;
 }
 
 - (UIButton *)createButtonAtIndex:(NSUInteger)index {
@@ -83,6 +83,7 @@
                                            [self YMarginForButtonInRow:row],
                                            self.buttonSize.width,
                                            self.buttonSize.height));
+//    button.backgroundColor = [UIColor greenColor];
   [button addTarget:self
              action:@selector(emojiButtonPressed:)
    forControlEvents:UIControlEventTouchUpInside];
@@ -96,6 +97,7 @@ backSpaceButtonImage:(UIImage *)backSpaceButtonImage
             columns:(NSUInteger)columns {
   self = [super initWithFrame:frame];
   if (self) {
+//      self.backgroundColor = [[UIColor redColor] colorWithAlphaComponent:0.5];
     _backSpaceButtonImage = backSpaceButtonImage;
     _buttonSize = buttonSize;
     _columns = columns;
