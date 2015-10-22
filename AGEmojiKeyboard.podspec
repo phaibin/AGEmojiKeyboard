@@ -3,9 +3,9 @@ Pod::Spec.new do |s|
   s.version          = "0.2.0"
   s.summary          = "An emoji keyboard view that can replace the default iOS keyboard."
   s.description      = <<-DESC
-                       AGEmojiKeyboard is a replacement view for the default keyboard 
-                       for iOS that contains all the emojis supported by iOS. This keyboard 
-                       view intends to be cutomizable to the point that you can easily alter 
+                       AGEmojiKeyboard is a replacement view for the default keyboard
+                       for iOS that contains all the emojis supported by iOS. This keyboard
+                       view intends to be cutomizable to the point that you can easily alter
                        it according to your needs.
                        DESC
   s.homepage         = "https://github.com/ayushgoel/AGEmojiKeyboard"
@@ -21,4 +21,5 @@ Pod::Spec.new do |s|
 
   s.source_files = 'AGEmojiKeyboard/*.{h,m}'
   s.resources = 'Resources/*.plist'
+  s.dependency      'HMSegmentedControl'
 end
